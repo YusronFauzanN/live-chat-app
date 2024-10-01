@@ -33,7 +33,7 @@ export const sendMessageHandler = async (req, res) => {
 
     await Promise.all([conversation.save(), newMessage.save()]);
 
-    res.status(200).json({ message: "Message sent successfully!" });
+    res.status(200).json({ message: newMessage });
   } catch (error) {
     res.status(500).json({ message: "Something went wrong" });
   }
@@ -50,9 +50,7 @@ export const getMessagesHandler = async (req, res) => {
       },
     }).populate("messages");
 
-    if (!conversation) {
-      return res.status(404).json({ message: "Conversation not found!" });
-    }
+    if (!conversation) return res.status(200).json([]);
 
     const messages = conversation.messages;
 
