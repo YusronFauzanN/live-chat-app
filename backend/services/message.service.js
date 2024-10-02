@@ -1,5 +1,6 @@
 import Conversation from "../models/conversation.model.js";
 import Message from "../models/message.model.js";
+import { getReceiverSocketId, io } from "../socket/socket.js";
 
 export const sendMessageHandler = async (req, res) => {
   try {
@@ -28,14 +29,19 @@ export const sendMessageHandler = async (req, res) => {
     if (newMessage) {
       conversation.messages.push(newMessage._id);
     }
+    await Promise.all([conversation.save(), newMessage.save()]);
 
     // Socket IO
-
-    await Promise.all([conversation.save(), newMessage.save()]);
+    const receiverSocketId = getReceiverSocketId(receiverId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("newMessage", newMessage);
+    }
 
     res.status(200).json({ message: newMessage });
   } catch (error) {
-    res.status(500).json({ message: "Something went wrong" });
+    res
+      .status(500)
+      .json({ message: "Something went wrong", error: error.message });
   }
 };
 
@@ -56,6 +62,8 @@ export const getMessagesHandler = async (req, res) => {
 
     res.status(200).json(messages);
   } catch (error) {
-    res.status(500).json({ message: "Something went wrong" });
+    res
+      .status(500)
+      .json({ message: "Something went wrong", error: error.message });
   }
 };
