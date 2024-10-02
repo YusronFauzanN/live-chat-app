@@ -1,5 +1,6 @@
 import Conversation from "../models/conversation.model.js";
 import Message from "../models/message.model.js";
+import { getReceiverSocketId, io } from "../socket/socket.js";
 
 export const sendMessageHandler = async (req, res) => {
   try {
@@ -28,14 +29,19 @@ export const sendMessageHandler = async (req, res) => {
     if (newMessage) {
       conversation.messages.push(newMessage._id);
     }
-
-    // Socket IO
-
     await Promise.all([conversation.save(), newMessage.save()]);
 
-    res.status(200).json({ message: "Message sent successfully!" });
+    // Socket IO
+    const receiverSocketId = getReceiverSocketId(receiverId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("newMessage", newMessage);
+    }
+
+    res.status(200).json({ message: newMessage });
   } catch (error) {
-    res.status(500).json({ message: "Something went wrong" });
+    res
+      .status(500)
+      .json({ message: "Something went wrong", error: error.message });
   }
 };
 
@@ -50,14 +56,14 @@ export const getMessagesHandler = async (req, res) => {
       },
     }).populate("messages");
 
-    if (!conversation) {
-      return res.status(404).json({ message: "Conversation not found!" });
-    }
+    if (!conversation) return res.status(200).json([]);
 
     const messages = conversation.messages;
 
     res.status(200).json(messages);
   } catch (error) {
-    res.status(500).json({ message: "Something went wrong" });
+    res
+      .status(500)
+      .json({ message: "Something went wrong", error: error.message });
   }
 };
